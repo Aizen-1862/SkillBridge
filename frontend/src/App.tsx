@@ -35,7 +35,7 @@ export default function App() {
    if(u)void loadData(u)
    else supabase!.from('projects').select('*, project_skills(skill_id, skills(name))').eq('status','published').order('created_at',{ascending:false}).limit(60).then(({data:rows})=>{if(alive&&rows)setProjects(rows as Project[])})
   })
-  const {data:listener}=supabase.auth.onAuthStateChange((_e,session)=>{const u=session?.user??null;setUser(u);if(u)void loadData(u);else{setProfile(null);setApplications([])}})
+  const {data:listener}=supabase.auth.onAuthStateChange((_e,session)=>{const u=session?.user??null;setUser(u);if(u)void loadData(u);else{setProfile(null);setApplications([]);setProjects(rows=>rows.filter(p=>p.status==='published'))}})
   return()=>{alive=false;listener.subscription.unsubscribe()}
  },[])
  const visible=useMemo(()=>{
@@ -54,7 +54,7 @@ export default function App() {
   else if(authMode==='signup'&&!r.data.session)setMessage('Account created. Check your inbox to confirm your email, then sign in.')
   else{setUser(r.data.user);if(r.data.user)await loadData(r.data.user);setModal(null)}
  }
- async function signOut(){if(supabase)await supabase.auth.signOut();setUser(null);setProfile(null);setActive('Overview')}
+ async function signOut(){if(supabase)await supabase.auth.signOut();setUser(null);setProfile(null);setProjects(rows=>rows.filter(p=>p.status==='published'));setApplications([]);setActive('Overview')}
  async function saveProfile(){
   if(!supabase||!user)return
   setBusy(true);const r=await supabase.from('profiles').update({full_name:profileForm.full_name.trim(),headline:profileForm.headline.trim(),bio:profileForm.bio.trim(),course:profileForm.course.trim(),branch:profileForm.branch.trim(),study_year:profileForm.study_year?Number(profileForm.study_year):null}).eq('id',user.id).select().single()
