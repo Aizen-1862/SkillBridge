@@ -22,7 +22,7 @@ export default function App() {
    supabase.from('profiles').select('*').eq('id',u.id).maybeSingle(),
    supabase.from('projects').select('*, project_skills(skill_id, skills(name))').order('created_at',{ascending:false}).limit(60),
    supabase.from('applications').select('*, projects(title, summary)').eq('applicant_id',u.id).order('created_at',{ascending:false}),
-   supabase.from('applications').select('*, profiles:applicant_id(full_name,headline,course,branch), projects!inner(title,creator_id)').eq('projects.creator_id',u.id).order('created_at',{ascending:false})
+   supabase.from('applications').select('*, profiles!applications_applicant_id_fkey(full_name,headline,course,branch), projects!inner(title,creator_id)').eq('projects.creator_id',u.id).order('created_at',{ascending:false})
   ])
   if(pr.data){setProfile(pr.data);setProfileForm({full_name:pr.data.full_name||'',headline:pr.data.headline||'',bio:pr.data.bio||'',course:pr.data.course||'',branch:pr.data.branch||'',study_year:pr.data.study_year?String(pr.data.study_year):''})}
   if(ps.data)setProjects(ps.data as Project[])
