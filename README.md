@@ -9,7 +9,7 @@
 - Deployment target: Render Web Service (API) + Static Site (frontend)
 
 ## Repository
-- `frontend/` responsive student workspace, Supabase email/password auth, profile editing, live project discovery, project publishing and applications
+- `frontend/` responsive student workspace, Supabase email/password auth, profile editing, live project discovery, project publishing, student applications, project-owner applicant inbox, and persistent light/dark themes
 - `backend/` Express API foundation with health and authenticated identity endpoints
 - `database/migrations/` schema, RLS hardening and lookup indexes
 - `docs/` product specification and architecture
@@ -47,7 +47,7 @@ Initial schema and hardening migrations have been applied to the connected Skill
 - Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`
 
 ## MVP status
-Implemented against live Supabase data: email/password authentication, student profile editing, public project discovery, student verification requests, project publishing for verified students, and applications for verified students. Project owner application decisions are enforced in database policies/triggers but the management screen is still pending.
+Implemented against live Supabase data: email/password authentication, student profile editing, public project discovery and search, student verification requests, project publishing for verified students, applications for verified students, and a project-owner applicant inbox with accept/decline actions. The frontend includes a responsive mobile navigation drawer and persistent light/dark theme toggle. The theme toggle and homepage were smoke-tested in a live browser; authenticated application workflows still require end-to-end testing with test accounts.
 
 Not yet launch-complete: verified-college directory seeding and review operations, startup verification/publishing, team workspaces, milestones, portfolios, notifications, messaging, reporting/blocking, moderation, private document storage, account export/deletion, age-appropriate safeguards, and end-to-end tests.
 
