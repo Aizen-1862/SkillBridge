@@ -73,7 +73,7 @@ export default function App() {
   if(r.error)setMessage(r.error.message)
   else{
    const names=projectForm.skills.split(',').map(x=>x.trim()).filter(Boolean)
-   for(const name of names){const s=await supabase.from('skills').upsert({name},{onConflict:'name'}).select('id').single();if(s.data)await supabase.from('project_skills').insert({project_id:r.data.id,skill_id:s.data.id})}
+   for(const name of names){let s=await supabase.from('skills').select('id').eq('name',name).maybeSingle();if(!s.data){s=await supabase.from('skills').insert({name}).select('id').single()}if(s.data)await supabase.from('project_skills').insert({project_id:r.data.id,skill_id:s.data.id})}
    setProjects([r.data as Project,...projects]);setProjectForm({title:'',summary:'',description:'',experience_level:'beginner',duration_label:'',team_capacity:'4',compensation_type:'unpaid',skills:''});setModal(null)
   }
   setBusy(false)
