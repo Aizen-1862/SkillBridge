@@ -1,0 +1,1 @@
+create index if not exists user_skills_skill_id_idx on public.user_skills(skill_id);

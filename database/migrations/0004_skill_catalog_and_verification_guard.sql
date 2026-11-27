@@ -1,0 +1,2 @@
+create policy "Authenticated users add skills" on public.skills for insert to authenticated with check (char_length(trim(name)) between 2 and 40);
+create unique index if not exists verification_requests_one_pending_per_user_idx on public.verification_requests(user_id) where status='pending';
