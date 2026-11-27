@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, Bookmark, Compass, FolderKanban, GraduationCap, LayoutDashboard, LogOut, Menu, Plus, Search, ShieldCheck, Users, X } from 'lucide-react'
+import { ArrowUpRight, Bookmark, Compass, FolderKanban, GraduationCap, LayoutDashboard, LogOut, Menu, Moon, Plus, Search, ShieldCheck, Sun, Users, X } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 
 type Modal = 'auth' | 'project' | 'apply' | 'profile' | 'verify' | null
 type Project = { id:string; creator_id:string; title:string; summary:string; description:string; experience_level:string; source_type:string; duration_label:string|null; compensation_type:string; team_capacity:number; status:string; project_skills?:{skill_id:string;skills?:{name:string}|null}[] }
-const nav = [{label:'Overview',icon:LayoutDashboard},{label:'Explore projects',icon:Compass},{label:'My projects',icon:FolderKanban},{label:'My applications',icon:Users}]
+const nav = [{label:'Overview',icon:LayoutDashboard},{label:'Explore projects',icon:Compass},{label:'My projects',icon:FolderKanban},{label:'My applications',icon:Users},{label:'Applicant inbox',icon:Users}]
 const blankProfile = {full_name:'',headline:'',bio:'',course:'',branch:'',study_year:''}
 
 export default function App() {
  const [active,setActive]=useState('Overview'),[modal,setModal]=useState<Modal>(null),[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>(null)
- const [projects,setProjects]=useState<Project[]>([]),[applications,setApplications]=useState<any[]>([]),[query,setQuery]=useState(''),[skill,setSkill]=useState('All skills'),[menu,setMenu]=useState(false)
+ const [theme,setTheme]=useState<'light'|'dark'>(()=>{try{return localStorage.getItem('skillbridge-theme')==='dark'?'dark':'light'}catch{return 'light'}})
+ const [projects,setProjects]=useState<Project[]>([]),[applications,setApplications]=useState<any[]>([]),[ownerApplications,setOwnerApplications]=useState<any[]>([]),[query,setQuery]=useState(''),[skill,setSkill]=useState('All skills'),[menu,setMenu]=useState(false)
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[authMode,setAuthMode]=useState<'signup'|'login'>('signup')
  const [authForm,setAuthForm]=useState({name:'',email:'',password:''}),[profileForm,setProfileForm]=useState(blankProfile)
  const [projectForm,setProjectForm]=useState({title:'',summary:'',description:'',experience_level:'beginner',duration_label:'',team_capacity:'4',compensation_type:'unpaid',skills:''})
@@ -17,14 +18,16 @@ export default function App() {
 
  async function loadData(u:any) {
   if(!supabase)return
-  const [pr,ps,ap]=await Promise.all([
+  const [pr,ps,ap,oa]=await Promise.all([
    supabase.from('profiles').select('*').eq('id',u.id).maybeSingle(),
    supabase.from('projects').select('*, project_skills(skill_id, skills(name))').order('created_at',{ascending:false}).limit(60),
-   supabase.from('applications').select('*, projects(title, summary)').eq('applicant_id',u.id).order('created_at',{ascending:false})
+   supabase.from('applications').select('*, projects(title, summary)').eq('applicant_id',u.id).order('created_at',{ascending:false}),
+   supabase.from('applications').select('*, profiles:applicant_id(full_name,headline,course,branch), projects!inner(title,creator_id)').eq('projects.creator_id',u.id).order('created_at',{ascending:false})
   ])
   if(pr.data){setProfile(pr.data);setProfileForm({full_name:pr.data.full_name||'',headline:pr.data.headline||'',bio:pr.data.bio||'',course:pr.data.course||'',branch:pr.data.branch||'',study_year:pr.data.study_year?String(pr.data.study_year):''})}
   if(ps.data)setProjects(ps.data as Project[])
   if(ap.data)setApplications(ap.data)
+  if(oa.data)setOwnerApplications(oa.data)
  }
  useEffect(()=>{
   if(!supabase)return
@@ -38,6 +41,7 @@ export default function App() {
   const {data:listener}=supabase.auth.onAuthStateChange((_e,session)=>{const u=session?.user??null;setUser(u);if(u)void loadData(u);else{setProfile(null);setApplications([]);setProjects(rows=>rows.filter(p=>p.status==='published'))}})
   return()=>{alive=false;listener.subscription.unsubscribe()}
  },[])
+ useEffect(()=>{document.documentElement.dataset.theme=theme;try{localStorage.setItem('skillbridge-theme',theme)}catch{}},[theme])
  const visible=useMemo(()=>{
   let rows=projects
   if(active==='My projects')rows=rows.filter(p=>p.creator_id===user?.id)
@@ -54,7 +58,8 @@ export default function App() {
   else if(authMode==='signup'&&!r.data.session)setMessage('Account created. Check your inbox to confirm your email, then sign in.')
   else{setUser(r.data.user);if(r.data.user)await loadData(r.data.user);setModal(null)}
  }
- async function signOut(){if(supabase)await supabase.auth.signOut();setUser(null);setProfile(null);setProjects(rows=>rows.filter(p=>p.status==='published'));setApplications([]);setActive('Overview')}
+ async function signOut(){if(supabase)await supabase.auth.signOut();setUser(null);setProfile(null);setProjects(rows=>rows.filter(p=>p.status==='published'));setApplications([]);setOwnerApplications([]);setActive('Overview')}
+ async function reviewApplication(id:string,next:'accepted'|'declined'){if(!supabase)return;setBusy(true);const r=await supabase.from('applications').update({status:next}).eq('id',id).eq('status','pending');setBusy(false);if(r.error)setMessage(r.error.message);else setOwnerApplications(rows=>rows.map(a=>a.id===id?{...a,status:next}:a))}
  async function saveProfile(){
   if(!supabase||!user)return
   setBusy(true);const r=await supabase.from('profiles').update({full_name:profileForm.full_name.trim(),headline:profileForm.headline.trim(),bio:profileForm.bio.trim(),course:profileForm.course.trim(),branch:profileForm.branch.trim(),study_year:profileForm.study_year?Number(profileForm.study_year):null}).eq('id',user.id).select().single()
@@ -95,12 +100,12 @@ export default function App() {
    <div className="side-bottom"><b>Build your future</b><p>Find a real project, learn with a team, and showcase what you make.</p><button onClick={()=>setActive('Explore projects')}>Explore projects ↗</button><hr/><b>{profile?.full_name||user?.email||'Welcome, builder'}</b><small>{status==='verified'?'Verified student':'Student account'}</small></div>
   </aside>
   {menu&&<button className="scrim" onClick={()=>setMenu(false)}/>}
-  <main><header><button className="menu" onClick={()=>setMenu(true)}><Menu/></button><span>Workspace　/　<b>{active}</b></span><div><em>{isSupabaseConfigured?'Supabase connected':'Preview mode'}</em>{user?<button className="avatar" title="Sign out" onClick={signOut}><LogOut size={15}/></button>:<button className="primary" onClick={()=>open('auth')}>Sign in</button>}</div></header>
+  <main><header><button className="menu" onClick={()=>setMenu(true)}><Menu/></button><span>Workspace　/　<b>{active}</b></span><div><em>{isSupabaseConfigured?'Supabase connected':'Preview mode'}</em><button className="theme-toggle" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light mode':'Switch to dark mode'} title={theme==='dark'?'Switch to light mode':'Switch to dark mode'}>{theme==='dark'?<Sun size={17}/>:<Moon size={17}/>}<span>{theme==='dark'?'Light':'Dark'}</span></button>{user?<button className="avatar" title="Sign out" onClick={signOut}><LogOut size={15}/></button>:<button className="primary" onClick={()=>open('auth')}>Sign in</button>}</div></header>
    <section className="content"><div className="welcome"><div><small>LEARN · BUILD · COLLABORATE · GROW</small><h1>{active==='Overview'?'Welcome'+(profile?.full_name?', '+profile.full_name.split(' ')[0]:' , builder')+'.':active}</h1><p>Discover student projects, meet collaborators and turn ideas into experience.</p></div><button className="primary" onClick={()=>user?open('project'):open('auth')}><Plus size={17}/> Publish a project</button></div>
     {!user&&<div className="notice"><ShieldCheck size={18}/><span>Explore public projects. Sign in to build your profile, apply and collaborate.</span><button onClick={()=>open('auth')}>Create account</button></div>}
     {user&&status!=='verified'&&<div className="notice"><ShieldCheck size={18}/><span>{status==='pending'?'Your student verification is awaiting review.':'Verify your student status to publish projects and apply.'}</span><button onClick={()=>open('verify')}>{status==='pending'?'View status':'Verify student status'}</button></div>}
     <div className="stats"><article><FolderKanban/><small>Projects available</small><strong>{projects.filter(p=>p.status==='published').length}</strong><p>Live from the platform</p></article><article><Users/><small>My applications</small><strong>{applications.length}</strong><p>Track your progress</p></article><article><GraduationCap/><small>Student verification</small><strong className="stat-word">{status==='verified'?'Verified':status==='pending'?'Pending':'Not yet'}</strong><p>Trust starts with a real profile</p></article></div>
-    {active==='My applications'?<><div className="section-title"><div><h2>Your applications</h2><p>Keep track of the projects you have applied to.</p></div></div><div className="stack">{applications.map(a=><article className="application-row" key={a.id}><div><b>{a.projects?.title||'Project application'}</b><small>Submitted {new Date(a.created_at||Date.now()).toLocaleDateString()}</small></div><span className={'status '+a.status}>{a.status}</span></article>)}{!applications.length&&<div className="empty">No applications yet. Explore projects and find a good fit.</div>}</div></>:<>
+    {active==='My applications'?<><div className="section-title"><div><h2>Your applications</h2><p>Keep track of the projects you have applied to.</p></div></div><div className="stack">{applications.map(a=><article className="application-row" key={a.id}><div><b>{a.projects?.title||'Project application'}</b><small>Submitted {new Date(a.created_at||Date.now()).toLocaleDateString()}</small></div><span className={'status '+a.status}>{a.status}</span></article>)}{!applications.length&&<div className="empty">No applications yet. Explore projects and find a good fit.</div>}</div></>:active==='Applicant inbox'?<><div className="section-title"><div><h2>Applicant inbox</h2><p>Review applications sent to projects you own.</p></div></div><div className="stack">{ownerApplications.map(a=><article className="application-row inbox-row" key={a.id}><div><b>{a.profiles?.full_name||'Student applicant'} · {a.projects?.title}</b><small>{a.profiles?.headline||[a.profiles?.course,a.profiles?.branch].filter(Boolean).join(' · ')||'Student profile'} · Applied {new Date(a.created_at||Date.now()).toLocaleDateString()}</small><p>{a.introduction}</p></div><div className="inbox-actions"><span className={'status '+a.status}>{a.status}</span>{a.status==='pending'&&<><button className="accept" disabled={busy} onClick={()=>reviewApplication(a.id,'accepted')}>Accept</button><button className="decline" disabled={busy} onClick={()=>reviewApplication(a.id,'declined')}>Decline</button></>}</div></article>)}{!ownerApplications.length&&<div className="empty">No applications for your projects yet.</div>}</div></>:<>
      <div className="section-title"><div><h2>{active==='My projects'?'Projects you published':'Discover projects'}</h2><p>{active==='My projects'?'Manage the opportunities you have created.':'Find a project that matches what you want to learn.'}</p></div><button onClick={()=>setActive('Explore projects')}>Explore all ↗</button></div>
      <div className="filters"><label><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search projects or skills"/></label><select value={skill} onChange={e=>setSkill(e.target.value)}><option>All skills</option>{skillNames.map(s=><option key={s}>{s}</option>)}</select></div>
      <div className="projects">{visible.map((p,i)=><article className="project" key={p.id}><div className={'art '+['blue','mint','violet'][i%3]}><span>{p.title.slice(0,2).toUpperCase()}</span><small>{p.source_type==='startup'?'Startup project':'Student project'}</small><button title="Save project" onClick={()=>setMessage('Saved-project lists are planned for a later release.')}><Bookmark size={17}/></button></div><div className="project-body"><small>{p.experience_level} · {p.compensation_type}</small><h3>{p.title}</h3><p>{p.summary}</p><div className="tags">{(p.project_skills||[]).map(s=>s.skills?.name).filter(Boolean).map(s=><span key={s}>{s}</span>)}{p.duration_label&&<span>{p.duration_label}</span>}</div><button className="view" onClick={()=>{setSelectedProject(p);open('apply')}}>View project & apply <ArrowUpRight size={15}/></button></div></article>)}{!visible.length&&<div className="empty">{isSupabaseConfigured?'No matching projects yet. Try another search or check back soon.':'Connect Supabase to load live projects.'}</div>}</div>
