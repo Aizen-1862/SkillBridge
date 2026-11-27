@@ -1,34 +1,59 @@
-<h1 align="center">SkillBridge</h1>
-<p align="center">A student-first collaboration and project discovery platform for India.</p>
+# SkillBridge
 
-> First working foundation. Core marketplace workflows are being built in staged, testable releases.
+**Learn. Build. Collaborate. Grow.**
+
+SkillBridge is a student-focused project discovery and collaboration platform for college students across India.
 
 ## Stack
 - Frontend: React, TypeScript, Vite
 - API: Node.js, Express
-- Database/Auth: Supabase (PostgreSQL + Auth)
-- Hosting target: Render
+- Auth/database: Supabase Auth + PostgreSQL with Row Level Security
+- Deployment target: Render (Web Service + Static Site)
 
-## Repository layout
-- `frontend/` responsive student dashboard and Supabase auth integration
-- `backend/` API foundation and auth middleware
-- `database/migrations/` PostgreSQL schema and row-level security policies
+## Repository
+- `frontend/` responsive student dashboard, search/filtering, saved-project UI and Supabase email/password auth wiring
+- `backend/` Express API foundation with health and authenticated identity endpoints
+- `database/migrations/` initial schema and RLS policies
 - `docs/` product specification and architecture
 
-## Setup
-1. Create a Supabase project and run `database/migrations/0001_initial_schema.sql` in the SQL editor.
-2. Copy `.env.example` to `.env` and fill in the Supabase project URL, anon key, and service role key where required. Never commit secrets.
-3. Install dependencies from the repository root with `npm install`.
-4. Run `npm run dev` for the frontend and `npm run dev:api` for the API.
+## Local development
+Requires Node.js 20+ and npm 10+.
 
-## Current scope
-The initial UI includes sample project discovery, search/filtering, saved projects, and Supabase auth wiring. Sample projects are demonstration data; live project publishing, applications, student verification review, teams, messaging, moderation, and production operations are subsequent implementation milestones. Do not treat this starter as production-ready until those workflows and security policies are tested.
+1. Copy `.env.example` to `.env`.
+2. Install dependencies: `npm install`
+3. Start frontend and API: `npm run dev`
+4. Build frontend: `npm run build`
 
-## Deployment
-Deploy `backend/` as a Render Web Service and `frontend/` as a Render Static Site. Configure environment variables from `.env.example` in the respective service dashboards. Apply database migrations before enabling public signups.
+Frontend: http://localhost:5173  
+API health: http://localhost:4000/api/v1/health
 
-## Security notes
-- Keep service-role keys server-side only.
-- Configure exact frontend origins in the API CORS allowlist.
-- Enable and test Supabase RLS before exposing data.
-- Student verification must be reviewed server-side; never trust a client-provided verified flag.
+Add Supabase URL and anon/publishable key to enable real accounts. Never put a service-role key in frontend variables or commit secrets.
+
+## Supabase setup
+1. Create a Supabase project.
+2. Run `database/migrations/0001_initial_schema.sql` in the SQL Editor.
+3. Configure Auth email confirmation and redirect URLs.
+4. Review and test RLS policies before using real student data.
+
+## Render deployment
+**API Web Service**
+- Root directory: `backend`
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment: `PORT`, `FRONTEND_ORIGIN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+
+**Frontend Static Site**
+- Root directory: `frontend`
+- Build command: `npm install && npm run build`
+- Publish directory: `dist`
+- Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL`
+
+## Current status
+This is the first working UI/API foundation, not a production-ready marketplace. Project cards currently use sample preview data. Live project CRUD, applications, student/startup verification review, team collaboration, messaging, moderation, file uploads, and full account workflows remain to be implemented and tested before public launch.
+
+## Security baseline
+- Browser uses the Supabase anon/publishable key and RLS.
+- API validates Supabase bearer tokens.
+- CORS is restricted to configured frontend origins.
+- Keep verification documents private; public profiles must never expose student ID documents.
+- Add reporting, blocking, audit logs, account export/deletion, and under-18 safeguards before public launch.
